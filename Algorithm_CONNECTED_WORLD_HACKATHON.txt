@@ -1,0 +1,148 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Algorithm designed for CONNECTED WORLD HACKATHON (Team: GODSPEEED)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+****On mobile application level
+
+genAlert = FALSE
+connectCarGPS = FALSE
+panicAlert = FALSE
+CAR_GPS_SIGNAL = TRUE
+
+
+IF (button_long_presed) OR (CAR_GPS_SIGNAL = FALSE)               //button on the cell phone is long pressed
+   panicAlert = TRUE
+END-IF
+
+IF panicAlert
+   genAlert = TRUE
+   connectCarGPS = TRUE
+ELSE IF (genAlert OR (button_long_pressed))
+   connectCarGPS = TRUE
+END-IF
+
+****
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+****Sending information to Cab_Service provider and Police_Station(s)
+
+cabCarLoc = 0
+cabPassengerLoc = 0
+copCarLoc = 0
+copPassengerLoc = 0
+cab_to_police_ALERT = 0
+no_of_policeStation = 0
+carVicinity = 2000                                                                             // Initial search limit between cab and police_station
+car_to_policeStaion_distance = 0
+cabCarNumber = NIL
+copCabNumber = NIL
+somethingWrong = FALSE
+
+IF (genAlert OR (button_long_pressed))
+    cabCarLoc = carLoc
+    cabPassengerLoc = passengerLoc
+    somethingWrong = TRUE
+END-IF
+
+
+**** To find the nearest police station within cab's vicinity
+
+    IF somethingWrong
+A :    IF cabCarLoc                                                                               // A label has been assigned to this line
+       //car_to_policeStaion_distance = findDistance(cabCarloc,policeStaLoc)
+       car_to_policeStaion_distance = google_maps_distance_matrix_API(cabCarLoc,policeStaLoc)      // Finding the distance between policeStation and cab's location
+       IF (car_to_policeStation_distance <= cabVicinity)
+       {      
+          no_of_policeStaion++                                                                     // Increase the count of police station by 1
+          GOTO C                                                                  
+       }
+       ElSE
+          cabVicinity = cabvicinity + 2000                                                         // If previous search didn't fetch any result, increase the search distance
+          car_to_policeStaion_distance = google_maps_distance_matrix_API(cabCarLoc,policeStaLoc)   // Finding the distance between policeStation and cab's location
+          IF (car_to_policeStation_distance <= cabVicinity)
+         {      
+             no_of_policeStaion++                                                                  // Increase the count of police station by 1
+             GOTO C                                                                                // Perform the logic where data transfer happens
+         }
+         ELSE
+             GOTO A
+      END-IF
+      
+B : IF cabPassengerLoc                                                                         // A label has been assigned to this line
+   //car_to_policeStaion_distance = findDistance(cabPassengerloc,policeStaLoc)
+   car_to_policeStaion_distance = google_maps_distance_matrix_API(cabCarLoc,policeStaLoc)      // Finding the distance between policeStation and passenger's location
+   IF (car_to_policeStation_distance <= cabVicinity)
+   {      
+      no_of_policeStaion++                                                                     // Increase the count of police station by 1
+      GOTO C                                                                                   // Perform the logic where data transfer happens
+   }
+   ElSE
+      cabVicinity = cabvicinity + 2000                                                         // If previous search didn't fetch any result, increase the search distance
+      car_to_policeStaion_distance = google_maps_distance_matrix_API(cabCarLoc,policeStaLoc)   // Finding the distance between policeStation and passenger's location
+      IF (car_to_policeStation_distance <= cabVicinity)
+      {      
+         no_of_policeStaion++                                                                  // Increase the count of police station by 1
+         GOTO C                                                                                // Perform the logic where data transfer happens
+      }
+      ELSE
+         GOTO B
+   END-IF
+END-IF                                                                                         // End of somethingWrong Loop
+****
+
+C : do                                                                                        // Main logic starts here
+{
+for(i = 1; i <= no_of_policeStation; i++)
+{  
+//do
+//{
+//IF (genAlert OR (button_long_pressed))
+//    cabCarLoc = carLoc
+//    cabPassengerLoc = passengerLoc
+
+    copCarLoc = carLoc
+    copCarnumber = cabCarNumber
+    copPassengerLoc = passengerLoc
+
+    cab_to_police_ALERT[i] = TRUE
+
+//END-IF
+//}
+
+//WHILE ((carLoc NE cabCarLoc) OR (passengerLoc NE cabPassenegerLoc))
+ELSE IF ((carLoc NE cabCarLoc) OR (passengerLoc NE cabPassenegerLoc))
+{
+    LOC_CHANGED = TRUE
+
+    cabCarLoc = carLoc
+    cabPassengerLoc = passengerLoc
+
+    copCarLoc = carLoc
+    copCarnumber = cabCarNumber
+    copPassengerLoc = passengerLoc
+  
+    cab_to_police_ALERT[i] = TRUE
+}
+
+IF ((cabCarLoc = copCarLoc) OR (cabPassengerLoc = copPassengerLoc) OR (carLoc = copCarLoc) OR (passengerLoc = copPassengerLoc))
+    police_to_cab_ACK = TRUE                                                             // Setting this flag means situation is under control
+
+ELSE
+    GOTO A
+END-IF
+
+} while (police_to_cab_ACK = TRUE)   
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**** To notify Police Stations if situation is under control
+
+FOR (i = 1 ;i <= no_of_policeStation ; i++)
+{
+     IF police_to_cab_ACK
+        cab_to_police_ALERT[i] = FALSE                                                   // Sending "Situation under control" message
+}
+
+****
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
